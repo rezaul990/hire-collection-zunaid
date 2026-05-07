@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Hire Collection Overview - Upload Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#eef2f7;color:#1a1a2e;font-size:13px}
+header{background:linear-gradient(135deg,#1F3864,#2E75B6);color:#fff;padding:12px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+header h1{font-size:1.12rem;font-weight:700;letter-spacing:.3px}
+header p{font-size:.72rem;opacity:.8;margin-top:3px}
+.upload-panel{background:#fff;padding:12px 24px;border-bottom:2px solid #dce8f5;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;align-items:end}
+.upload-box{border:1.5px solid #c5d8ee;background:#f5f9ff;border-radius:8px;padding:10px}
+.upload-box label{display:block;font-weight:700;color:#1F3864;font-size:.72rem;margin-bottom:6px}
+.upload-box input{width:100%;font-size:.72rem}
+.upload-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.status{font-size:.72rem;color:#555;line-height:1.35}
+.summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:9px;padding:12px 24px;background:#fff;border-bottom:2px solid #dce8f5}
+.card{background:#fff;border-radius:8px;padding:10px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.07);border-top:4px solid #2E75B6;transition:transform .12s,box-shadow .12s}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.card.clickable{cursor:pointer}
+.card.active-filter{outline:3px solid #f59e0b;outline-offset:2px}
+.card.red{border-top-color:#e53e3e}.card.green{border-top-color:#38a169}
+.card.orange{border-top-color:#ED7D31}.card.purple{border-top-color:#7c3aed}
+.card.teal{border-top-color:#0694a2}.card.pink{border-top-color:#e74694}
+.card.maroon{border-top-color:#7f1d1d}.card.amber{border-top-color:#b45309}
+.card .val{font-size:.98rem;font-weight:800;color:#1F3864;line-height:1.2}
+.card.red .val{color:#c53030}.card.green .val{color:#276749}
+.card.orange .val{color:#7b4000}.card.purple .val{color:#5b21b6}
+.card.teal .val{color:#065f46}.card.pink .val{color:#9d174d}
+.card.maroon .val{color:#7f1d1d}.card.amber .val{color:#78350f}
+.card .lbl{font-size:.61rem;color:#555;margin-top:4px;line-height:1.35}
+.card .hint{font-size:.56rem;color:#aaa;margin-top:2px}
+.ctrl-section{background:#fff;border-bottom:1px solid #dce8f5;padding:9px 24px}
+.ctrl-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.ctrl-row:last-child{margin-bottom:0}
+.ctrl-lbl{font-size:.67rem;font-weight:700;color:#1F3864;white-space:nowrap}
+.ctrl-row input[type=text],.ctrl-row select,.ctrl-row input[type=number]{padding:6px 9px;border:1.5px solid #c5d8ee;border-radius:6px;font-size:.73rem;background:#f5f9ff;color:#222}
+.ctrl-row input[type=text]:focus,.ctrl-row select:focus{border-color:#2E75B6;outline:none}
+.ctrl-row input[type=text]{width:220px}
+.ctrl-row input[type=number]{width:62px}
+.filter-label{font-size:.73rem;color:#444;display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 9px;border:1.5px solid #c5d8ee;border-radius:6px;background:#f5f9ff}
+.range-group{display:flex;align-items:center;gap:5px;padding:5px 9px;border:1.5px solid #c5d8ee;border-radius:6px;background:#f0fff4;font-size:.72rem;color:#1F3864}
+.range-group span{font-weight:700;white-space:nowrap}
+.btn{padding:6px 12px;border:none;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-grey{background:#e2e8f0;color:#333}.btn-grey:hover{background:#cbd5e0}
+.btn-green{background:#276749;color:#fff}.btn-green:hover{background:#1a4731}
+.btn-blue2{background:#1F3864;color:#fff}.btn-blue2:hover{background:#162a4a}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row-count{font-size:.7rem;color:#666;margin-left:auto;font-style:italic}
+.legend{display:flex;gap:14px;padding:7px 24px 0;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:.66rem;color:#555}
+.legend-box{width:13px;height:13px;border-radius:3px;flex-shrink:0}
+.table-outer{padding:0 24px 10px;overflow:auto;max-height:68vh}
+table{width:100%;border-collapse:collapse;font-size:.72rem;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border-radius:8px;margin-top:11px}
+thead th{background:#1F3864;color:#fff;padding:8px 7px;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:4;font-size:.7rem}
+thead th.ov-hdr{background:#9b1c1c}
+tbody tr:nth-child(even){background:#f4f8fd}
+tbody tr:hover{background:#ddeeff}
+td{padding:5px 7px;border-bottom:1px solid #e4eef8;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.c{text-align:center}
+.row-below-tgt{background:#fff8e6!important}
+.row-below-ov{background:#ffe6f0!important}
+.row-below-both{background:#f3e8ff!important}
+.ov-cell{color:#c0392b;font-weight:700;background:#fff0f0!important}
+.pv-cell{color:#7b5a00;background:#fffbeb!important}
+.red-chg{color:#c0392b;font-weight:700}.grn-chg{color:#276749;font-weight:700}
+tfoot td{background:#1F3864;color:#fff;font-weight:700;padding:7px;text-align:right;border-top:2px solid #ED7D31;font-size:.72rem;position:sticky;bottom:0;z-index:3}
+tfoot td.c{text-align:center}
+.no-data{text-align:center;padding:36px;color:#888}
+.dl-bar{background:#fff;border-top:2px solid #dce8f5;padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dl-title{font-size:.74rem;font-weight:700;color:#1F3864}
+.dl-note{font-size:.67rem;color:#888}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Hire Collection Overview</h1>
+    <p id="subtitle">Upload target, current overdue, and previous overdue Excel files to generate the report.</p>
+  </div>
+  <div>
+    <p id="updatedAt">No file loaded</p>
+  </div>
+</header>
+
+<section class="upload-panel">
+  <div class="upload-box">
+    <label for="targetFile">Target / Collection Excel</label>
+    <input type="file" id="targetFile" accept=".xls,.xlsx,.xlsm">
+  </div>
+  <div class="upload-box">
+    <label for="currentFile">Current Overdue Excel</label>
+    <input type="file" id="currentFile" accept=".xls,.xlsx,.xlsm">
+  </div>
+  <div class="upload-box">
+    <label for="previousFile">Previous Overdue Excel</label>
+    <input type="file" id="previousFile" accept=".xls,.xlsx,.xlsm">
+  </div>
+  <div class="upload-actions">
+    <button class="btn btn-blue2" id="loadBtn" onclick="loadFiles()">Generate Report</button>
+    <button class="btn btn-grey" onclick="resetData()">Reset</button>
+    <span class="status" id="uploadStatus">Waiting for files.</span>
+  </div>
+</section>
+
+<div class="summary" id="summaryGrid"></div>
+
+<div class="ctrl-section">
+  <div class="ctrl-row">
+    <span class="ctrl-lbl">Search</span>
+    <input type="text" id="searchBox" placeholder="Name / Account / Invoice / Plaza / Mobile..." oninput="doFilter()">
+    <span class="ctrl-lbl">Division</span>
+    <select id="divSel" onchange="doFilter()"><option value="">All</option></select>
+    <span class="ctrl-lbl">Area</span>
+    <select id="areaSel" onchange="doFilter()"><option value="">All Areas</option></select>
+    <span class="ctrl-lbl">Plaza</span>
+    <select id="plazaSel" onchange="onPlazaChange()"><option value="">All Plazas</option></select>
+    <span class="ctrl-lbl">Product</span>
+    <select id="prodSel" onchange="doFilter()"><option value="">All</option></select>
+  </div>
+  <div class="ctrl-row">
+    <span class="ctrl-lbl">Person ID</span>
+    <select id="personSel" onchange="doFilter()"><option value="">All Persons</option></select>
+    <span class="ctrl-lbl">Inv. Year</span>
+    <select id="yearSel" onchange="doFilter()"><option value="">All</option></select>
+    <span class="ctrl-lbl">Month</span>
+    <select id="monthSel" onchange="doFilter()"><option value="">All</option></select>
+    <label class="filter-label"><input type="checkbox" id="ovChk" onchange="doFilter()"> Overdue Only</label>
+    <label class="filter-label" style="border-color:#f59e0b;background:#fffbeb"><input type="checkbox" id="belowTgtChk" onchange="doFilter()"> Achv &lt; Target</label>
+    <label class="filter-label" style="border-color:#e74694;background:#fff0f8"><input type="checkbox" id="belowOvChk" onchange="doFilter()"> Achv &lt; Overdue</label>
+    <input type="checkbox" id="maturedChk" onchange="doFilter()" style="display:none">
+    <input type="checkbox" id="uncollectedChk" onchange="doFilter()" style="display:none">
+    <button class="btn btn-grey" onclick="clearAll()">Clear</button>
+    <span class="row-count" id="rowCount"></span>
+  </div>
+  <div class="ctrl-row">
+    <span class="ctrl-lbl">Day Range</span>
+    <div class="range-group">
+      <span>From day</span>
+      <input type="number" id="dayFrom" min="1" max="31" placeholder="1" oninput="doFilter()">
+      <span>to</span>
+      <input type="number" id="dayTo" min="1" max="31" placeholder="31" oninput="doFilter()">
+      <span>of each month</span>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-box" style="background:#fff8e6;border:1px solid #f59e0b"></div> Collection Below Collectible Amount</div>
+  <div class="legend-item"><div class="legend-box" style="background:#ffe6f0;border:1px solid #e74694"></div> Collection Below Overdue Amount</div>
+  <div class="legend-item"><div class="legend-box" style="background:#f3e8ff;border:1px solid #9333ea"></div> Both conditions apply</div>
+</div>
+
+<div class="table-outer">
+<table id="mainTable">
+<thead><tr>
+  <th>S/N</th><th>Division</th><th>Area</th><th>Plaza</th>
+  <th>Account No.</th><th>Customer Name</th><th>Mobile No.</th><th>Product</th>
+  <th>Person ID</th><th>Invoice No.</th>
+  <th>Invoice Date</th><th>Matured Date</th>
+  <th>Monthly Inst. (BDT)</th><th>Collectible Amt. Target (BDT)</th><th>Collectible Amt. Achv (BDT)</th>
+  <th class="ov-hdr" id="curOvHdr">Current Overdue</th>
+  <th class="ov-hdr" id="prevOvHdr">Previous Overdue</th>
+  <th class="ov-hdr">Overdue Change</th>
+</tr></thead>
+<tbody id="tbody"></tbody>
+<tfoot><tr>
+  <td class="c" colspan="12">TOTAL</td>
+  <td id="fMI"></td><td id="fTG"></td><td id="fAC"></td>
+  <td id="fCO"></td><td id="fPO"></td><td id="fCH"></td>
+</tr></tfoot>
+</table>
+</div>
+
+<div class="dl-bar">
+  <span class="dl-title">Excel Download:</span>
+  <button class="btn btn-green" onclick="exportExcel(false)" id="exportFilteredBtn" disabled>Filtered Data (.xlsx)</button>
+  <button class="btn btn-blue2" onclick="exportExcel(true)" id="exportAllBtn" disabled>All Data (.xlsx)</button>
+  <span class="dl-note" id="dlNote"></span>
+</div>
+
+<script>
+let DATA = [];
+let vis = [];
+let cardFilter = null;
+let meta = { currentDate: 'Current Overdue', previousDate: 'Previous Overdue', loadedAt: '' };
+
+const TODAY_MS = new Date(new Date().setHours(0,0,0,0)).getTime();
+const MONTH_MAP = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmt = n => Number(n||0).toLocaleString('en-BD');
+const $ = id => document.getElementById(id);
+
+const EXPORT_COLS = [
+  ['S / N','S/N'],['Division','Division'],['Area','Area'],['Plaza','Plaza'],
+  ['Account No.','Account No.'],['Customer Name','Customer Name'],['Mobile No.','Mobile No.'],
+  ['Product Category','Product Category'],['Assign Person ID','Person ID'],
+  ['Invoice No.','Invoice No.'],['Invoice Date','Invoice Date'],['Matured Date','Matured Date'],
+  ['Per Month Ins. Schedule  Amt.','Monthly Inst. (BDT)'],
+  ['Collection Target','Collectible Amt. Target (BDT)'],
+  ['Collection Achieve','Collectible Amt. Achv (BDT)'],
+  ['Current Overdue','Current Overdue'],
+  ['Previous Overdue','Previous Overdue'],
+  ['Overdue Change','Overdue Change'],
+];
+
+function cleanText(v) {
+  return v === undefined || v === null ? '' : String(v).replace(/\s+/g,' ').trim();
+}
+
+function normalizeHeader(v) {
+  return cleanText(v).toLowerCase().replace(/[^a-z0-9]+/g,'');
+}
+
+function toNum(v) {
+  if(v === undefined || v === null || v === '') return 0;
+  if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const n = Number(String(v).replace(/[,\s৳]/g,''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function excelDateToText(v) {
+  if(!v) return '';
+  if(v instanceof Date && !isNaN(v)) return formatDate(v);
+  if(typeof v === 'number') {
+    const d = XLSX.SSF.parse_date_code(v);
+    if(d) return formatDate(new Date(d.y, d.m-1, d.d));
+  }
+  return cleanText(v);
+}
+
+function formatDate(d) {
+  const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  return String(d.getDate()).padStart(2,'0') + '-' + mon + '-' + String(d.getFullYear()).slice(-2);
+}
+
+function parseDateText(s) {
+  if(!s) return null;
+  if(s instanceof Date && !isNaN(s)) return s;
+  const text = cleanText(s);
+  const m = text.match(/(\d{1,2})[-/ ]([A-Za-z]{3,9}|\d{1,2})[-/ ](\d{2,4})/);
+  if(!m) return null;
+  let day = Number(m[1]);
+  let mon = /^\d+$/.test(m[2]) ? Number(m[2])-1 : MONTH_MAP[m[2].slice(0,3).toLowerCase()];
+  let yr = Number(m[3]);
+  if(yr < 100) yr += yr >= 50 ? 1900 : 2000;
+  if(!day || mon === undefined || !yr) return null;
+  const d = new Date(yr, mon, day);
+  return isNaN(d) ? null : d;
+}
+
+function parseMaturedDate(s) {
+  const d = parseDateText(s);
+  if(!d) return null;
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+
+async function readWorkbook(file) {
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type:'array', cellDates:true });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:false, defval:'' });
+  return { fileName:file.name, sheetName:wb.SheetNames[0], rows };
+}
+
+function findHeaderRow(rows, required) {
+  for(let i=0;i<Math.min(rows.length,40);i++) {
+    const headers = rows[i].map(normalizeHeader);
+    if(required.every(req => headers.some(h => req.includes(h)))) return i;
+  }
+  return -1;
+}
+
+function mapHeaders(row) {
+  const map = {};
+  row.forEach((h,i) => {
+    const key = normalizeHeader(h);
+    if(key && map[key] === undefined) map[key] = i;
+  });
+  return map;
+}
+
+function getByAliases(row, map, aliases) {
+  for(const alias of aliases) {
+    const idx = map[normalizeHeader(alias)];
+    if(idx !== undefined) return row[idx];
+  }
+  return '';
+}
+
+function isRepeatedHeader(row) {
+  return row.some(v => normalizeHeader(v) === 'division') && row.some(v => normalizeHeader(v) === 'area');
+}
+
+function extractAsOnDate(rows) {
+  for(let r=0;r<Math.min(rows.length,8);r++) {
+    for(const cell of rows[r]) {
+      const text = cleanText(cell);
+      const m = text.match(/As on Date\s+(.+)/i);
+      if(m) return cleanText(m[1]);
+      const date = text.match(/\d{1,2}[-/ ][A-Za-z]{3,9}[-/ ]\d{2,4}/);
+      if(/May|Apr|Jan|Feb|Mar|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(text) && date) return date[0];
+    }
+  }
+  return '';
+}
+
+function parseTarget(workbook) {
+  const headerIndex = findHeaderRow(workbook.rows, [['s/n','sn'], ['division'], ['area'], ['accountno'], ['invoiceno']]);
+  if(headerIndex < 0) throw new Error('Target file header row was not found.');
+  const map = mapHeaders(workbook.rows[headerIndex]);
+  const out = [];
+  workbook.rows.slice(headerIndex+1).forEach(row => {
+    if(!row || isRepeatedHeader(row)) return;
+    const invoice = cleanText(getByAliases(row,map,['Invoice No.']));
+    const account = cleanText(getByAliases(row,map,['Account No.']));
+    const division = cleanText(getByAliases(row,map,['Division']));
+    const area = cleanText(getByAliases(row,map,['Area']));
+    if(!invoice || !account || !division || area.toLowerCase() === 'area') return;
+    const invDate = excelDateToText(getByAliases(row,map,['Invoice Date']));
+    const invD = parseDateText(invDate);
+    out.push({
+      'S / N': out.length + 1,
+      'Division': division,
+      'Area': area,
+      'Plaza': cleanText(getByAliases(row,map,['Plaza'])),
+      'Account No.': account,
+      'Customer Name': cleanText(getByAliases(row,map,['Customer Name'])),
+      'Mobile No.': '',
+      'Product Category': cleanText(getByAliases(row,map,['Product Category','Iteem Category','Item Category'])),
+      'Assign Person ID': cleanText(getByAliases(row,map,['Assign Person ID'])),
+      'Invoice No.': invoice,
+      'Invoice Date': invDate,
+      'Matured Date': excelDateToText(getByAliases(row,map,['Matured Date'])),
+      'Per Month Ins. Schedule  Amt.': toNum(getByAliases(row,map,['Per Month Ins. Schedule Amt.','Per Month Ins. Schedule  Amt.'])),
+      'Collection Target': toNum(getByAliases(row,map,['Collection Target'])),
+      'Collection Achieve': toNum(getByAliases(row,map,['Collection Achieve'])),
+      'Current Overdue': 0,
+      'Previous Overdue': 0,
+      'Overdue Change': 0,
+      'Inv Day': invD ? invD.getDate() : 0,
+      'Inv Month': invD ? invD.getMonth()+1 : 0,
+      'Inv Year': invD ? invD.getFullYear() : 0,
+    });
+  });
+  return out;
+}
+
+function parseOverdue(workbook) {
+  const headerIndex = findHeaderRow(workbook.rows, [['division'], ['area'], ['accountno'], ['overdue']]);
+  if(headerIndex < 0) throw new Error(workbook.fileName + ' header row was not found.');
+  const map = mapHeaders(workbook.rows[headerIndex]);
+  const asOn = extractAsOnDate(workbook.rows);
+  const byInvoice = new Map();
+  const byAccount = new Map();
+  workbook.rows.slice(headerIndex+1).forEach(row => {
+    if(!row || isRepeatedHeader(row)) return;
+    const invoice = cleanText(getByAliases(row,map,['Sale Invoice','Invoice No.']));
+    const account = cleanText(getByAliases(row,map,['Account No.']));
+    const division = cleanText(getByAliases(row,map,['Division']));
+    const area = cleanText(getByAliases(row,map,['Area']));
+    if(!account || !division || area.toLowerCase() === 'area') return;
+    const rec = {
+      invoice,
+      account,
+      division,
+      area,
+      plaza: cleanText(getByAliases(row,map,['Plaza'])),
+      saleDate: excelDateToText(getByAliases(row,map,['Sale Date','Invoice Date'])),
+      product: cleanText(getByAliases(row,map,['Product Category','Iteem Category','Item Category'])),
+      customer: cleanText(getByAliases(row,map,['Customer Name'])),
+      mobile: cleanText(getByAliases(row,map,['Mobile No.'])),
+      person: cleanText(getByAliases(row,map,['Assign Person ID'])),
+      overdue: toNum(getByAliases(row,map,['Overdue'])),
+    };
+    if(invoice) byInvoice.set(invoice, rec);
+    byAccount.set(account, rec);
+  });
+  return { asOn, byInvoice, byAccount, count: byAccount.size };
+}
+
+function mergeData(targetRows, current, previous) {
+  return targetRows.map((r, idx) => {
+    const cur = current.byInvoice.get(r['Invoice No.']) || current.byAccount.get(r['Account No.']);
+    const prev = previous.byInvoice.get(r['Invoice No.']) || previous.byAccount.get(r['Account No.']);
+    const co = cur ? cur.overdue : 0;
+    const po = prev ? prev.overdue : 0;
+    return {
+      ...r,
+      'S / N': idx + 1,
+      'Mobile No.': cleanText(r['Mobile No.']) || (cur && cur.mobile) || (prev && prev.mobile) || '',
+      'Current Overdue': co,
+      'Previous Overdue': po,
+      'Overdue Change': co - po,
+    };
+  });
+}
+
+async function loadFiles() {
+  const target = $('targetFile').files[0];
+  const current = $('currentFile').files[0];
+  const previous = $('previousFile').files[0];
+  if(!target || !current || !previous) {
+    $('uploadStatus').textContent = 'Please select all three Excel files.';
+    return;
+  }
+  $('loadBtn').disabled = true;
+  $('uploadStatus').textContent = 'Reading Excel files...';
+  try {
+    const [targetWb, currentWb, previousWb] = await Promise.all([readWorkbook(target), readWorkbook(current), readWorkbook(previous)]);
+    const targetRows = parseTarget(targetWb);
+    const currentRows = parseOverdue(currentWb);
+    const previousRows = parseOverdue(previousWb);
+    DATA = mergeData(targetRows, currentRows, previousRows);
+    vis = [...DATA];
+    meta = {
+      currentDate: currentRows.asOn || 'Current Overdue',
+      previousDate: previousRows.asOn || 'Previous Overdue',
+      loadedAt: new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+    };
+    hydrateFilters();
+    updateHeadings();
+    renderTable();
+    $('exportFilteredBtn').disabled = $('exportAllBtn').disabled = DATA.length === 0;
+    $('uploadStatus').textContent = `Loaded ${DATA.length} target rows. Current overdue matched ${currentRows.count} accounts; previous overdue matched ${previousRows.count} accounts.`;
+  } catch(e) {
+    console.error(e);
+    $('uploadStatus').textContent = 'Could not load files: ' + e.message;
+  } finally {
+    $('loadBtn').disabled = false;
+  }
+}
+
+function updateHeadings() {
+  const areas = unique(DATA.map(r => r['Area']));
+  const divs = unique(DATA.map(r => r['Division']));
+  const areaText = areas.length === 1 ? areas[0] : `${areas.length} areas`;
+  const divText = divs.length === 1 ? divs[0] : `${divs.length} divisions`;
+  $('subtitle').textContent = `Invoice-wise Overdue Analysis | ${divText} | ${areaText} | Current: ${meta.currentDate} | Previous: ${meta.previousDate}`;
+  $('updatedAt').textContent = `Last Updated: ${meta.loadedAt}`;
+  $('curOvHdr').textContent = `Current Overdue ${meta.currentDate}`;
+  $('prevOvHdr').textContent = `Previous Overdue ${meta.previousDate}`;
+}
+
+function unique(values) {
+  return [...new Set(values.map(cleanText).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+}
+
+function setOptions(id, values, firstLabel) {
+  const sel = $(id);
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${firstLabel}</option>`;
+  values.forEach(v => {
+    const o = document.createElement('option');
+    o.value = o.textContent = v;
+    if(v === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function hydrateFilters() {
+  setOptions('divSel', unique(DATA.map(r => r['Division'])), 'All');
+  setOptions('areaSel', unique(DATA.map(r => r['Area'])), 'All Areas');
+  setOptions('plazaSel', unique(DATA.map(r => r['Plaza'])), 'All Plazas');
+  setOptions('prodSel', unique(DATA.map(r => r['Product Category'])), 'All');
+  setOptions('personSel', unique(DATA.map(r => r['Assign Person ID'])), 'All Persons');
+  setOptions('yearSel', unique(DATA.map(r => r['Inv Year']).filter(Boolean)).map(String), 'All');
+  const months = unique(DATA.map(r => r['Inv Month']).filter(Boolean)).map(n => ({value:String(n), label:MONTH_NAMES[n-1]}));
+  const sel = $('monthSel');
+  sel.innerHTML = '<option value="">All</option>';
+  months.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m.value;
+    o.textContent = m.label;
+    sel.appendChild(o);
+  });
+}
+
+function calcStats(rows) {
+  const sum = k => rows.reduce((a,r) => a+(Number(r[k])||0), 0);
+  const totalAC = rows.length;
+  const collectedAC = rows.filter(r => (r['Collection Achieve']||0) > 0).length;
+  const collPct = totalAC > 0 ? ((collectedAC/totalAC)*100).toFixed(1) : '0.0';
+  const ovCount = rows.filter(r => (r['Current Overdue']||0) > 0).length;
+  const tgt = sum('Collection Target'), ach = sum('Collection Achieve');
+  const amtPct = tgt > 0 ? ((ach/tgt)*100).toFixed(1) : '0.0';
+  const belowTgt = rows.filter(r => { const ac=r['Collection Achieve']||0,tg=r['Collection Target']||0; return ac>0&&ac<tg; }).length;
+  const belowOv = rows.filter(r => { const ac=r['Collection Achieve']||0,co=r['Current Overdue']||0; return ac>0&&ac<co; }).length;
+  const maturedRows = rows.filter(r => {
+    const ms = parseMaturedDate(r['Matured Date']);
+    return ms !== null && ms < TODAY_MS;
+  });
+  const maturedAC = maturedRows.length;
+  const maturedOv = maturedRows.reduce((a,r) => a+(r['Current Overdue']||0), 0);
+  const uncollectedAC = rows.filter(r => (r['Collection Achieve']||0) === 0).length;
+  return { totalAC, collectedAC, collPct, ovCount, belowTgt, belowOv, amtPct,
+    maturedAC, maturedOv, uncollectedAC,
+    mi: sum('Per Month Ins. Schedule  Amt.'), tgt, ach,
+    co: sum('Current Overdue'), po: sum('Previous Overdue'),
+    ch: sum('Overdue Change') };
+}
+
+function renderCards(s) {
+  const mk = (cls,val,lbl,hint='',cid=null) => {
+    const active = cardFilter===cid ? 'active-filter':'';
+    const attrs = cid
+      ? `class="card ${cls} clickable ${active}" onclick="toggleCardFilter('${cid}')"`
+      : `class="card ${cls}"`;
+    return `<div ${attrs}><div class="val">${val}</div><div class="lbl">${lbl}</div>${hint?`<div class="hint">${hint}</div>`:''}</div>`;
+  };
+  $('summaryGrid').innerHTML =
+    mk('', fmt(s.totalAC), 'Total Running A/C Qty.') +
+    mk('red', fmt(s.ovCount), 'Overdue A/C Qty.') +
+    mk('purple', 'BDT '+fmt(s.mi), 'Total Monthly Installment') +
+    mk('', 'BDT '+fmt(s.tgt), 'Collectible Amount Target') +
+    mk('green', 'BDT '+fmt(s.ach), 'Collectible Amount Achv') +
+    mk('teal', s.amtPct+'%', 'Collectible Amount Achv %') +
+    mk('teal', fmt(s.collectedAC), 'Number of A/C Collected') +
+    mk('teal', s.collPct+'%', 'Collection Qty. Achv %') +
+    mk('red', 'BDT '+fmt(s.co), 'Current Overdue') +
+    mk('orange', 'BDT '+fmt(s.po), 'Previous Overdue') +
+    mk(s.ch>=0?'red':'green', (s.ch>=0?'+':'')+fmt(s.ch), 'Overdue Change') +
+    mk('maroon', fmt(s.maturedAC), 'Matured A/C Qty.', 'click to filter', 'matured') +
+    mk('amber', 'BDT '+fmt(s.maturedOv), 'Matured Overdue Amount') +
+    mk('pink', fmt(s.belowTgt), 'Collection Below Collectible Amount', 'click to filter', 'belowTgt') +
+    mk('pink', fmt(s.belowOv), 'Collection Below Overdue Amount', 'click to filter', 'belowOv') +
+    mk('red', fmt(s.uncollectedAC), 'Uncollected A/C Qty.', 'click to filter', 'uncollected');
+}
+
+function toggleCardFilter(type) {
+  cardFilter = cardFilter===type ? null : type;
+  $('belowTgtChk').checked = cardFilter==='belowTgt';
+  $('belowOvChk').checked = cardFilter==='belowOv';
+  $('uncollectedChk').checked = cardFilter==='uncollected';
+  $('maturedChk').checked = cardFilter==='matured';
+  doFilter();
+}
+
+function renderTable() {
+  const rows = vis;
+  $('tbody').innerHTML = rows.length ? rows.map(r => {
+    const co=r['Current Overdue']||0, po=r['Previous Overdue']||0;
+    const ch=r['Overdue Change']||0, ac=r['Collection Achieve']||0, tg=r['Collection Target']||0;
+    const isBT=ac>0&&ac<tg, isBO=ac>0&&ac<co;
+    const rowCls=isBT&&isBO?'row-below-both':isBT?'row-below-tgt':isBO?'row-below-ov':'';
+    return `<tr class="${rowCls}">
+    <td class="c">${r['S / N']||''}</td>
+    <td>${r['Division']||''}</td><td>${r['Area']||''}</td><td>${r['Plaza']||''}</td>
+    <td>${r['Account No.']||''}</td><td>${r['Customer Name']||''}</td>
+    <td>${r['Mobile No.']||''}</td>
+    <td>${r['Product Category']||''}</td><td>${r['Assign Person ID']||''}</td>
+    <td>${r['Invoice No.']||''}</td>
+    <td>${r['Invoice Date']||''}</td><td>${r['Matured Date']||''}</td>
+    <td class="num">${fmt(r['Per Month Ins. Schedule  Amt.']||0)}</td>
+    <td class="num">${fmt(tg)}</td>
+    <td class="num">${fmt(ac)}</td>
+    <td class="num${co>0?' ov-cell':''}">${co>0?fmt(co):'-'}</td>
+    <td class="num${po>0?' pv-cell':''}">${po>0?fmt(po):'-'}</td>
+    <td class="num ${ch>0?'red-chg':ch<0?'grn-chg':''}">${ch!==0?(ch>0?'+':'')+fmt(ch):'-'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="18" class="no-data">No records found. Upload files or change filters.</td></tr>';
+
+  const s = calcStats(vis);
+  $('fMI').textContent=fmt(s.mi); $('fTG').textContent=fmt(s.tgt); $('fAC').textContent=fmt(s.ach);
+  $('fCO').textContent=fmt(s.co); $('fPO').textContent=fmt(s.po); $('fCH').textContent=fmt(s.ch);
+  renderCards(s);
+  $('dlNote').textContent=`Filtered: ${vis.length} rows | Total: ${DATA.length} rows`;
+  $('rowCount').textContent=`Showing ${vis.length} of ${DATA.length} records`;
+}
+
+function onPlazaChange() {
+  const plaza=$('plazaSel').value;
+  const pool = plaza ? DATA.filter(r => r['Plaza'] === plaza) : DATA;
+  setOptions('personSel', unique(pool.map(r => r['Assign Person ID'])), 'All Persons');
+  doFilter();
+}
+
+function doFilter() {
+  const q=$('searchBox').value.toLowerCase();
+  const div=$('divSel').value, area=$('areaSel').value, pla=$('plazaSel').value, prd=$('prodSel').value;
+  const per=$('personSel').value, yr=$('yearSel').value, mo=$('monthSel').value;
+  const ovOnly=$('ovChk').checked, btChk=$('belowTgtChk').checked, boChk=$('belowOvChk').checked;
+  const dayFrom=parseInt($('dayFrom').value)||0;
+  const dayTo=parseInt($('dayTo').value)||32;
+  const matChk=$('maturedChk').checked, uncolChk=$('uncollectedChk').checked;
+  if(btChk&&!boChk&&!matChk&&!uncolChk) cardFilter='belowTgt';
+  else if(boChk&&!btChk&&!matChk&&!uncolChk) cardFilter='belowOv';
+  else if(matChk&&!btChk&&!boChk&&!uncolChk) cardFilter='matured';
+  else if(uncolChk&&!btChk&&!boChk&&!matChk) cardFilter='uncollected';
+  else if(!btChk&&!boChk&&!matChk&&!uncolChk) cardFilter=null;
+
+  vis=DATA.filter(r=>{
+    if(q&&!['Account No.','Customer Name','Invoice No.','Plaza','Area','Product Category','Assign Person ID','Mobile No.']
+      .some(k=>(r[k]||'').toString().toLowerCase().includes(q))) return false;
+    if(div&&r['Division']!==div) return false;
+    if(area&&r['Area']!==area) return false;
+    if(pla&&r['Plaza']!==pla) return false;
+    if(prd&&r['Product Category']!==prd) return false;
+    if(per&&r['Assign Person ID']!==per) return false;
+    if(yr&&r['Inv Year']!==Number(yr)) return false;
+    if(mo&&r['Inv Month']!==Number(mo)) return false;
+    if(($('dayFrom').value||$('dayTo').value) && r['Inv Day']>0) {
+      if(r['Inv Day']<dayFrom || r['Inv Day']>dayTo) return false;
+    }
+    if(ovOnly&&!((r['Current Overdue']||0)>0)) return false;
+    if(cardFilter==='belowTgt'||btChk){const ac=r['Collection Achieve']||0,tg=r['Collection Target']||0;if(!(ac>0&&ac<tg))return false;}
+    if(cardFilter==='belowOv'||boChk){const ac=r['Collection Achieve']||0,co=r['Current Overdue']||0;if(!(ac>0&&ac<co))return false;}
+    if(cardFilter==='matured'||matChk){const ms=parseMaturedDate(r['Matured Date']);if(!(ms!==null&&ms<TODAY_MS))return false;}
+    if(cardFilter==='uncollected'||uncolChk){if((r['Collection Achieve']||0)!==0)return false;}
+    return true;
+  });
+  renderTable();
+}
+
+function clearAll() {
+  $('searchBox').value='';
+  ['divSel','areaSel','plazaSel','prodSel','personSel','yearSel','monthSel'].forEach(id=>$(id).value='');
+  $('ovChk').checked=$('belowTgtChk').checked=$('belowOvChk').checked=false;
+  $('maturedChk').checked=$('uncollectedChk').checked=false;
+  $('dayFrom').value=''; $('dayTo').value='';
+  cardFilter=null;
+  hydrateFilters();
+  vis=[...DATA];
+  renderTable();
+}
+
+function resetData() {
+  DATA = [];
+  vis = [];
+  cardFilter = null;
+  ['targetFile','currentFile','previousFile'].forEach(id => $(id).value = '');
+  clearAll();
+  $('subtitle').textContent = 'Upload target, current overdue, and previous overdue Excel files to generate the report.';
+  $('updatedAt').textContent = 'No file loaded';
+  $('uploadStatus').textContent = 'Waiting for files.';
+  $('exportFilteredBtn').disabled = $('exportAllBtn').disabled = true;
+}
+
+function exportExcel(allData) {
+  const src=allData?DATA:vis;
+  const keys=EXPORT_COLS.map(c=>c[0]), hdrs=EXPORT_COLS.map(c=>c[1]);
+  hdrs[15] = `Current Overdue ${meta.currentDate}`;
+  hdrs[16] = `Previous Overdue ${meta.previousDate}`;
+  const numKeys=new Set(['Per Month Ins. Schedule  Amt.','Collection Target','Collection Achieve',
+    'Current Overdue','Previous Overdue','Overdue Change']);
+  const wsData=[hdrs,...src.map(r=>keys.map(k=>{
+    const v=r[k]; return numKeys.has(k)?Number(v)||0:(v===undefined||v===null?'':String(v));
+  }))];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[5,12,14,26,18,22,14,14,14,22,12,12,16,16,16,18,18,14].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Hire Collection');
+  const s=calcStats(src);
+  const sumData=[
+    ['Hire Collection Overview'],
+    [`Current: ${meta.currentDate}`],
+    [`Previous: ${meta.previousDate}`],
+    [`Last Updated: ${meta.loadedAt}`],[''],
+    ['Metric','Value'],
+    ['Total Running A/C Qty.',s.totalAC],
+    ['Overdue A/C Qty.',s.ovCount],
+    ['Total Monthly Installment (BDT)',s.mi],
+    ['Collectible Amount Target (BDT)',s.tgt],
+    ['Collectible Amount Achv (BDT)',s.ach],
+    ['Collectible Amount Achv %',s.amtPct+'%'],
+    ['Number of A/C Collected',s.collectedAC],
+    ['Collection Qty. Achv %',s.collPct+'%'],
+    ['Current Overdue (BDT)',s.co],
+    ['Previous Overdue (BDT)',s.po],
+    ['Overdue Change (BDT)',s.ch],
+    ['Matured A/C Qty.',s.maturedAC],
+    ['Matured Overdue Amount (BDT)',s.maturedOv],
+    ['Collection Below Collectible Amount (Qty.)',s.belowTgt],
+    ['Collection Below Overdue Amount (Qty.)',s.belowOv],
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(sumData);
+  ws2['!cols']=[{wch:36},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Summary');
+  const fname=allData?'HireCollection_AllData.xlsx':'HireCollection_Filtered.xlsx';
+  XLSX.writeFile(wb,fname);
+  $('dlNote').textContent='Downloaded: '+src.length+' rows -> '+fname;
+  setTimeout(()=>$('dlNote').textContent='Filtered: '+vis.length+' rows | Total: '+DATA.length+' rows',3000);
+}
+
+hydrateFilters();
+renderTable();
+</script>
+</body>
+</html>

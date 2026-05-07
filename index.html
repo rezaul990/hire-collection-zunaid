@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Hire Collection Dashboard - Supabase</title>
+<meta name="author" content="Zunaid Nomani">
+<meta name="description" content="Hire Collection Dashboard - Invoice-wise Overdue Analysis">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#eef2f7;color:#1a1a2e;font-size:13px}
+header{background:linear-gradient(135deg,#1F3864,#2E75B6);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+header h1{font-size:1.12rem;font-weight:700;letter-spacing:.3px}
+header p{font-size:.72rem;opacity:.8;margin-top:3px}
+.user-info{display:flex;align-items:center;gap:10px;font-size:.72rem}
+.user-info button{padding:4px 10px;border:1px solid #fff;background:transparent;color:#fff;border-radius:4px;cursor:pointer;font-size:.7rem}
+.user-info button:hover{background:rgba(255,255,255,.1)}
+.auth-container{max-width:400px;margin:100px auto;background:#fff;padding:30px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.auth-container h2{margin-bottom:20px;color:#1F3864;text-align:center}
+.auth-form{display:flex;flex-direction:column;gap:15px}
+.auth-form input{padding:10px;border:1.5px solid #c5d8ee;border-radius:6px;font-size:.85rem}
+.auth-form button{padding:10px;background:#1F3864;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.85rem}
+.auth-form button:hover{background:#162a4a}
+.auth-form button:disabled{opacity:.5;cursor:not-allowed}
+.auth-toggle{text-align:center;margin-top:15px;font-size:.8rem;color:#666}
+.auth-toggle a{color:#2E75B6;cursor:pointer;text-decoration:underline}
+.error-msg{color:#e53e3e;font-size:.75rem;padding:8px;background:#fff0f0;border-radius:4px;margin-bottom:10px}
+.success-msg{color:#276749;font-size:.75rem;padding:8px;background:#f0fff4;border-radius:4px;margin-bottom:10px}
+.upload-panel{background:#fff;padding:12px 24px;border-bottom:2px solid #dce8f5;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;align-items:end}
+.upload-box{border:1.5px solid #c5d8ee;background:#f5f9ff;border-radius:8px;padding:10px}
+.upload-box label{display:block;font-weight:700;color:#1F3864;font-size:.72rem;margin-bottom:6px}
+.upload-box input{width:100%;font-size:.72rem}
+.upload-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.status{font-size:.72rem;color:#555;line-height:1.35}
+.summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:9px;padding:12px 24px;background:#fff;border-bottom:2px solid #dce8f5}
+.card{background:#fff;border-radius:8px;padding:10px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.07);border-top:4px solid #2E75B6;transition:transform .12s,box-shadow .12s}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.card.clickable{cursor:pointer}
+.card.active-filter{outline:3px solid #f59e0b;outline-offset:2px}
+.card.red{border-top-color:#e53e3e}.card.green{border-top-color:#38a169}
+.card.orange{border-top-color:#ED7D31}.card.purple{border-top-color:#7c3aed}
+.card.teal{border-top-color:#0694a2}.card.pink{border-top-color:#e74694}
+.card.maroon{border-top-color:#7f1d1d}.card.amber{border-top-color:#b45309}
+.card .val{font-size:.98rem;font-weight:800;color:#1F3864;line-height:1.2}
+.card.red .val{color:#c53030}.card.green .val{color:#276749}
+.card.orange .val{color:#7b4000}.card.purple .val{color:#5b21b6}
+.card.teal .val{color:#065f46}.card.pink .val{color:#9d174d}
+.card.maroon .val{color:#7f1d1d}.card.amber .val{color:#78350f}
+.card .lbl{font-size:.61rem;color:#555;margin-top:4px;line-height:1.35}
+.card .hint{font-size:.56rem;color:#aaa;margin-top:2px}
+.ctrl-section{background:#fff;border-bottom:1px solid #dce8f5;padding:9px 24px}
+.ctrl-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.ctrl-row:last-child{margin-bottom:0}
+.ctrl-lbl{font-size:.67rem;font-weight:700;color:#1F3864;white-space:nowrap}
+.ctrl-row input[type=text],.ctrl-row select,.ctrl-row input[type=number]{padding:6px 9px;border:1.5px solid #c5d8ee;border-radius:6px;font-size:.73rem;background:#f5f9ff;color:#222}
+.ctrl-row input[type=text]:focus,.ctrl-row select:focus{border-color:#2E75B6;outline:none}
+.ctrl-row input[type=text]{width:220px}
+.ctrl-row input[type=number]{width:62px}
+.filter-label{font-size:.73rem;color:#444;display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 9px;border:1.5px solid #c5d8ee;border-radius:6px;background:#f5f9ff}
+.range-group{display:flex;align-items:center;gap:5px;padding:5px 9px;border:1.5px solid #c5d8ee;border-radius:6px;background:#f0fff4;font-size:.72rem;color:#1F3864}
+.range-group span{font-weight:700;white-space:nowrap}
+.btn{padding:6px 12px;border:none;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-grey{background:#e2e8f0;color:#333}.btn-grey:hover{background:#cbd5e0}
+.btn-green{background:#276749;color:#fff}.btn-green:hover{background:#1a4731}
+.btn-blue2{background:#1F3864;color:#fff}.btn-blue2:hover{background:#162a4a}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row-count{font-size:.7rem;color:#666;margin-left:auto;font-style:italic}
+.legend{display:flex;gap:14px;padding:7px 24px 0;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:.75rem;color:#333;font-weight:500}
+.legend-box{width:20px;height:20px;border-radius:3px;flex-shrink:0}
+.table-outer{padding:0 24px 10px;overflow:auto;max-height:68vh}
+table{width:100%;border-collapse:collapse;font-size:.72rem;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border-radius:8px;margin-top:11px}
+thead th{background:#1F3864;color:#fff;padding:8px 7px;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:4;font-size:.7rem}
+thead th.ov-hdr{background:#9b1c1c}
+tbody tr:nth-child(even){background:#f4f8fd}
+tbody tr:hover{background:#ddeeff}
+td{padding:5px 7px;border-bottom:1px solid #e4eef8;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.c{text-align:center}
+.row-below-tgt{background:#fff8e6!important}
+.row-below-ov{background:#ffe6f0!important}
+.row-below-both{background:#f3e8ff!important}
+.ov-cell{color:#c0392b;font-weight:700;background:#fff0f0!important}
+.pv-cell{color:#7b5a00;background:#fffbeb!important}
+.red-chg{color:#c0392b;font-weight:700}.grn-chg{color:#276749;font-weight:700}
+tfoot td{background:#1F3864;color:#fff;font-weight:700;padding:7px;text-align:right;border-top:2px solid #ED7D31;font-size:.72rem;position:sticky;bottom:0;z-index:3}
+tfoot td.c{text-align:center}
+.no-data{text-align:center;padding:36px;color:#888}
+.dl-bar{background:#fff;border-top:2px solid #dce8f5;padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dl-title{font-size:.74rem;font-weight:700;color:#1F3864}
+.dl-note{font-size:.67rem;color:#888}
+.hidden{display:none}
+.loader{border:3px solid #f3f3f3;border-top:3px solid #2E75B6;border-radius:50%;width:20px;height:20px;animation:spin 1s linear infinite;display:inline-block}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.batch-selector{padding:12px 24px;background:#fff;border-bottom:2px solid #dce8f5}
+.batch-selector label{font-weight:700;color:#1F3864;font-size:.75rem;margin-right:8px}
+.batch-selector select{padding:6px 12px;border:1.5px solid #c5d8ee;border-radius:6px;font-size:.75rem;background:#f5f9ff;min-width:300px}
+</style>
+</head>
+<body>
+
+<div id="authContainer" class="auth-container">
+  <h2>Hire Collection Dashboard</h2>
+  <div id="authMessage"></div>
+  <form id="authForm" class="auth-form">
+    <input type="email" id="authEmail" placeholder="Email" required>
+    <input type="password" id="authPassword" placeholder="Password" required minlength="6">
+    <select id="authPlaza" style="display:none; padding:10px; border:1.5px solid #c5d8ee; border-radius:6px; font-size:.85rem;">
+      <option value="">Select Your Plaza</option>
+    </select>
+    <button type="submit" id="authSubmitBtn">Sign In</button>
+  </form>
+  <div class="auth-toggle">
+    <span id="authToggleText">Don't have an account? <a id="authToggleLink">Sign Up</a></span>
+  </div>
+</div>
+
+<div id="appContainer" class="hidden">
+  <header>
+    <div>
+      <h1>Hire Collection Dashboard</h1>
+      <p id="subtitle">Upload Excel files to analyze hire collection data</p>
+    </div>
+    <div class="user-info">
+      <span id="userEmail"></span>
+      <button onclick="showAdminPanel()" id="adminPanelBtn" style="display:none">Manage Admins</button>
+      <button onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="batch-selector">
+    <label for="batchSelect">Select Data Batch:</label>
+    <select id="batchSelect" onchange="loadBatchData()">
+      <option value="">-- Select a batch --</option>
+    </select>
+    <button class="btn btn-grey" id="uploadNewDataBtn" onclick="showUploadPanel()" style="margin-left:10px; display:none;">Upload New Data</button>
+  </div>
+
+  <section class="upload-panel hidden" id="uploadPanel">
+    <div class="upload-box">
+      <label for="targetFile">Target / Collection Excel</label>
+      <input type="file" id="targetFile" accept=".xls,.xlsx,.xlsm">
+    </div>
+    <div class="upload-box">
+      <label for="currentFile">Current Overdue Excel</label>
+      <input type="file" id="currentFile" accept=".xls,.xlsx,.xlsm">
+    </div>
+    <div class="upload-box">
+      <label for="previousFile">Previous Overdue Excel</label>
+      <input type="file" id="previousFile" accept=".xls,.xlsx,.xlsm">
+    </div>
+    <div class="upload-actions">
+      <button class="btn btn-blue2" id="uploadBtn" onclick="uploadAndSaveData()">Upload & Save to Database</button>
+      <button class="btn btn-grey" onclick="hideUploadPanel()">Cancel</button>
+      <span class="status" id="uploadStatus">Select files to upload.</span>
+    </div>
+  </section>
+
+  <div class="summary" id="summaryGrid"></div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-row">
+      <span class="ctrl-lbl">Search</span>
+      <input type="text" id="searchBox" placeholder="Name / Account / Invoice / Plaza / Mobile..." oninput="doFilter()">
+      <span class="ctrl-lbl">Division</span>
+      <select id="divSel" onchange="doFilter()"><option value="">All</option></select>
+      <span class="ctrl-lbl">Area</span>
+      <select id="areaSel" onchange="doFilter()"><option value="">All Areas</option></select>
+      <span class="ctrl-lbl">Plaza</span>
+      <select id="plazaSel" onchange="onPlazaChange()"><option value="">All Plazas</option></select>
+      <span class="ctrl-lbl">Product</span>
+      <select id="prodSel" onchange="doFilter()"><option value="">All</option></select>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-lbl">Person ID</span>
+      <select id="personSel" onchange="doFilter()"><option value="">All Persons</option></select>
+      <span class="ctrl-lbl">Inv. Year</span>
+      <select id="yearSel" onchange="doFilter()"><option value="">All</option></select>
+      <span class="ctrl-lbl">Month</span>
+      <select id="monthSel" onchange="doFilter()"><option value="">All</option></select>
+      <label class="filter-label"><input type="checkbox" id="ovChk" onchange="doFilter()"> Overdue Only</label>
+      <label class="filter-label" style="border-color:#f59e0b;background:#fffbeb"><input type="checkbox" id="belowTgtChk" onchange="doFilter()"> Achv &lt; Target</label>
+      <label class="filter-label" style="border-color:#e74694;background:#fff0f8"><input type="checkbox" id="belowOvChk" onchange="doFilter()"> Achv &lt; Overdue</label>
+      <input type="checkbox" id="maturedChk" onchange="doFilter()" style="display:none">
+      <input type="checkbox" id="uncollectedChk" onchange="doFilter()" style="display:none">
+      <button class="btn btn-grey" onclick="clearAll()">Clear</button>
+      <span class="row-count" id="rowCount"></span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-lbl">Day Range</span>
+      <div class="range-group">
+        <span>From day</span>
+        <input type="number" id="dayFrom" min="1" max="31" placeholder="1" oninput="doFilter()">
+        <span>to</span>
+        <input type="number" id="dayTo" min="1" max="31" placeholder="31" oninput="doFilter()">
+        <span>of each month</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-box" style="background:#fff8e6;border:1px solid #f59e0b"></div> Collection Below Collectible Amount</div>
+    <div class="legend-item"><div class="legend-box" style="background:#ffe6f0;border:1px solid #e74694"></div> Collection Below Overdue Amount</div>
+    <div class="legend-item"><div class="legend-box" style="background:#f3e8ff;border:1px solid #9333ea"></div> Both conditions apply</div>
+  </div>
+
+  <div class="table-outer">
+    <table id="mainTable">
+      <thead><tr>
+        <th>S/N</th><th>Division</th><th>Area</th><th>Plaza</th>
+        <th>Account No.</th><th>Customer Name</th><th>Mobile No.</th><th>Product</th>
+        <th>Person ID</th><th>Invoice No.</th>
+        <th>Invoice Date</th><th>Matured Date</th>
+        <th>Monthly Inst. (BDT)</th><th>Collectible Amt. Target (BDT)</th><th>Collectible Amt. Achv (BDT)</th>
+        <th class="ov-hdr" id="curOvHdr">Current Overdue</th>
+        <th class="ov-hdr" id="prevOvHdr">Previous Overdue</th>
+        <th class="ov-hdr">Overdue Change</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot><tr>
+        <td class="c" colspan="12">TOTAL</td>
+        <td id="fMI"></td><td id="fTG"></td><td id="fAC"></td>
+        <td id="fCO"></td><td id="fPO"></td><td id="fCH"></td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  <div class="dl-bar">
+    <span class="dl-title">Excel Download:</span>
+    <button class="btn btn-green" onclick="exportExcel(false)" id="exportFilteredBtn" disabled>Filtered Data (.xlsx)</button>
+    <button class="btn btn-blue2" onclick="exportExcel(true)" id="exportAllBtn" disabled>All Data (.xlsx)</button>
+    <span class="dl-note" id="dlNote"></span>
+  </div>
+
+  <footer style="background:#1F3864;color:#fff;padding:10px 24px;text-align:center;font-size:0.75rem;border-top:2px solid #2E75B6;">
+    <p style="margin:0;">© All Rights Reserved By <strong>Zunaid Nomani</strong></p>
+  </footer>
+</div>
+
+<!-- Admin Panel Modal -->
+<div id="adminModal" class="auth-container" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1000; box-shadow:0 10px 40px rgba(0,0,0,0.3); max-width:500px;">
+  <h2>Admin Management</h2>
+  <div id="adminMessage"></div>
+  <div class="auth-form">
+    <input type="email" id="newAdminEmail" placeholder="Enter admin email">
+    <select id="newAdminArea" style="padding:10px; border:1.5px solid #c5d8ee; border-radius:6px; font-size:.85rem;">
+      <option value="">Select Area</option>
+    </select>
+    <button class="btn btn-blue2" onclick="addNewAdmin()">Add Area Admin</button>
+    <button class="btn btn-grey" onclick="closeAdminPanel()">Close</button>
+  </div>
+  <div style="margin-top:20px;">
+    <h3 style="font-size:0.9rem; margin-bottom:10px;">Current Area Admins:</h3>
+    <div id="adminList" style="font-size:0.8rem; color:#666; max-height:200px; overflow-y:auto;"></div>
+  </div>
+</div>
+<div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999;" onclick="closeAdminPanel()"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
