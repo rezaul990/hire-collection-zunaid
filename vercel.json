@@ -1,0 +1,6 @@
+{
+  "buildCommand": "node create-config.js",
+  "outputDirectory": ".",
+  "installCommand": "echo 'No dependencies to install'",
+  "framework": null
+}
