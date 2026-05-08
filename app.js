@@ -559,7 +559,7 @@ function parseOverdue(workbook) {
   const map = mapHeaders(workbook.rows[headerIndex]);
   const asOn = extractAsOnDate(workbook.rows);
   const byInvoice = new Map();
-  const byAccount = new Map();
+  const byComposite = new Map(); // Plaza + Account + Customer composite key
   workbook.rows.slice(headerIndex+1).forEach(row => {
     if(!row || isRepeatedHeader(row)) return;
     const invoice = cleanText(getByAliases(row,map,['Sale Invoice','Invoice No.']));
@@ -567,31 +567,50 @@ function parseOverdue(workbook) {
     const division = cleanText(getByAliases(row,map,['Division']));
     const area = cleanText(getByAliases(row,map,['Area']));
     if(!account || !division || area.toLowerCase() === 'area') return;
+    const plaza = cleanText(getByAliases(row,map,['Plaza']));
+    const customer = cleanText(getByAliases(row,map,['Customer Name']));
     const rec = {
       invoice,
       account,
       division,
       area,
-      plaza: cleanText(getByAliases(row,map,['Plaza'])),
+      plaza,
       saleDate: excelDateToText(getByAliases(row,map,['Sale Date','Invoice Date'])),
       product: cleanText(getByAliases(row,map,['Product Category','Iteem Category','Item Category'])),
-      customer: cleanText(getByAliases(row,map,['Customer Name'])),
+      customer,
       mobile: cleanText(getByAliases(row,map,['Mobile No.'])),
       person: cleanText(getByAliases(row,map,['Assign Person ID'])),
       overdue: toNum(getByAliases(row,map,['Overdue'])),
     };
+    // Primary key: Invoice Number
     if(invoice) byInvoice.set(invoice, rec);
-    byAccount.set(account, rec);
+    // Composite key: Plaza + Account + Customer (fallback matching)
+    const compositeKey = `${plaza}|${account}|${customer}`.toLowerCase();
+    byComposite.set(compositeKey, rec);
   });
-  return { asOn, byInvoice, byAccount, count: byAccount.size };
+  return { asOn, byInvoice, byComposite, count: byComposite.size };
 }
 
 function mergeData(targetRows, current, previous) {
   return targetRows.map((r, idx) => {
-    const cur = current.byInvoice.get(r['Invoice No.']) || current.byAccount.get(r['Account No.']);
-    const prev = previous.byInvoice.get(r['Invoice No.']) || previous.byAccount.get(r['Account No.']);
+    // STRICT MATCHING: Only match by Invoice Number
+    // NO composite key fallback to prevent incorrect matches
+    const invoiceNo = cleanText(r['Invoice No.']);
+    
+    let cur = null;
+    let prev = null;
+    
+    // Only match if invoice number exists and is not empty
+    if (invoiceNo) {
+      cur = current.byInvoice.get(invoiceNo);
+      prev = previous.byInvoice.get(invoiceNo);
+    }
+    
+    // If no match found by invoice, overdue = 0
+    // This ensures we don't pick up wrong overdue amounts
     const co = cur ? cur.overdue : 0;
     const po = prev ? prev.overdue : 0;
+    
     return {
       ...r,
       'S / N': idx + 1,
