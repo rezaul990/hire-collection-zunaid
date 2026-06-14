@@ -1056,6 +1056,88 @@ function exportExcel(allData) {
   setTimeout(()=>$('dlNote').textContent='Filtered: '+vis.length+' rows | Total: '+DATA.length+' rows',3000);
 }
 
+function exportPlazaSummary() {
+  const src = DATA;
+  if (!src || src.length === 0) {
+    $('dlNote').textContent = 'No data loaded. Please select a batch first.';
+    return;
+  }
+
+  // Group all rows by Plaza and compute counts per plaza
+  const plazaMap = {};
+  src.forEach(r => {
+    const plaza = r['Plaza'] || 'Unknown';
+    if (!plazaMap[plaza]) {
+      plazaMap[plaza] = { plaza, totalAC: 0, collectedQty: 0, achBelowTgtQty: 0, achBelowTgt2025: 0, achBelowTgt2026: 0 };
+    }
+    const p = plazaMap[plaza];
+    p.totalAC++;
+    const ac = Number(r['Collection Achieve']) || 0;
+    const tg = Number(r['Collection Target']) || 0;
+    const invYear = Number(r['Inv Year']) || 0;
+    if (ac > 0) p.collectedQty++;
+    if (ac > 0 && ac < tg) {
+      p.achBelowTgtQty++;
+      if (invYear === 2025) p.achBelowTgt2025++;
+      if (invYear === 2026) p.achBelowTgt2026++;
+    }
+  });
+
+  const plazas = Object.values(plazaMap).sort((a, b) => a.plaza.localeCompare(b.plaza, undefined, { numeric: true }));
+
+  // Grand totals
+  const grand = plazas.reduce((acc, p) => ({
+    totalAC: acc.totalAC + p.totalAC,
+    collectedQty: acc.collectedQty + p.collectedQty,
+    achBelowTgtQty: acc.achBelowTgtQty + p.achBelowTgtQty,
+    achBelowTgt2025: acc.achBelowTgt2025 + p.achBelowTgt2025,
+    achBelowTgt2026: acc.achBelowTgt2026 + p.achBelowTgt2026,
+  }), { totalAC: 0, collectedQty: 0, achBelowTgtQty: 0, achBelowTgt2025: 0, achBelowTgt2026: 0 });
+
+  // Build sheet data
+  const hdrs = ['S/N', 'Plaza Name', 'Total Running A/C Qty', 'Total Collected Qty', 'Ach < Target Qty',
+    '2025 Ach < Target Qty', '2026 Ach < Target Qty'];
+  const dataRows = plazas.map((p, i) => [
+    i + 1,
+    p.plaza,
+    p.totalAC,
+    p.collectedQty,
+    p.achBelowTgtQty,
+    p.achBelowTgt2025,
+    p.achBelowTgt2026,
+  ]);
+
+  // Grand total row
+  dataRows.push([
+    '',
+    'GRAND TOTAL',
+    grand.totalAC,
+    grand.collectedQty,
+    grand.achBelowTgtQty,
+    grand.achBelowTgt2025,
+    grand.achBelowTgt2026,
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Plaza-wise Summary: Achievement Below Target'],
+    ['Current Overdue: ' + meta.currentDate + ' | Previous Overdue: ' + meta.previousDate],
+    ['Generated: ' + new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })],
+    [''],
+    hdrs,
+    ...dataRows
+  ]);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 6 }, { wch: 24 }, { wch: 22 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 22 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Plaza Summary');
+  XLSX.writeFile(wb, 'PlazaWise_AchvBelowTarget_Summary.xlsx');
+  $('dlNote').textContent = 'Downloaded: Plaza Summary — ' + plazas.length + ' plaza(s), ' + grand.totalAC + ' account(s)';
+  setTimeout(() => $('dlNote').textContent = 'Filtered: ' + vis.length + ' rows | Total: ' + DATA.length + ' rows', 4000);
+}
 
 // Expose functions to global scope for inline event handlers
 window.doFilter = doFilter;
@@ -1068,6 +1150,7 @@ window.uploadAndSaveData = uploadAndSaveData;
 window.showUploadPanel = showUploadPanel;
 window.hideUploadPanel = hideUploadPanel;
 window.loadBatchData = loadBatchData;
+window.exportPlazaSummary = exportPlazaSummary;
 
 
 // Admin management functions
